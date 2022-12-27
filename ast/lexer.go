@@ -144,25 +144,50 @@ func (l *lexer) processIndentation(peek antlr.Token) {
 	case parser.EarthLexerNL:
 		l.indentLevel = 0
 		l.afterNewLine = true
-	default:
+	case parser.EarthLexerCOMMENT:
 		if l.afterNewLine {
-			if l.prevIndentLevel < l.indentLevel {
-				l.tokenQueue = append(l.tokenQueue, l.makeIndent())
-				if l.debug {
-					fmt.Printf("INDENT ")
-				}
-			} else if l.prevIndentLevel > l.indentLevel {
-				l.tokenQueue = append(l.tokenQueue, l.makeDedent())
-				if l.debug {
-					fmt.Printf("DEDENT ")
-				}
-				if peek.GetTokenType() != parser.EarthLexerTarget && peek.GetTokenType() != parser.EarthLexerUserCommand {
-					l.popRecipeMode()
-				}
+			// In cases where comments are on a line by themselves, they could
+			// be documentation - in which case we need handle INDENT/DEDENT.
+			if strings.HasPrefix(peek.GetText(), " ") || strings.HasPrefix(peek.GetText(), "\t") {
+				l.indentLevel = 1
 			}
+			l.handleIndentLevel(peek)
 		}
-		l.prevIndentLevel = l.indentLevel
-		l.afterNewLine = false
+		// In all cases, comments consume a CRLF so we need to treat them like
+		// newlines.
+		l.indentLevel = 0
+		l.afterNewLine = true
+	default:
+		l.handleIndentLevel(peek)
+	}
+}
+
+func (l *lexer) handleIndentLevel(peek antlr.Token) {
+	if !l.afterNewLine {
+		return
+	}
+	l.afterNewLine = false
+
+	if l.prevIndentLevel == l.indentLevel {
+		return
+	}
+	prevIndent := l.prevIndentLevel
+	l.prevIndentLevel = l.indentLevel
+
+	if prevIndent < l.indentLevel {
+		l.tokenQueue = append(l.tokenQueue, l.makeIndent())
+		if l.debug {
+			fmt.Printf("INDENT ")
+		}
+		return
+	}
+
+	l.tokenQueue = append(l.tokenQueue, l.makeDedent())
+	if l.debug {
+		fmt.Printf("DEDENT ")
+	}
+	if peek.GetTokenType() != parser.EarthLexerTarget && peek.GetTokenType() != parser.EarthLexerUserCommand {
+		l.popRecipeMode()
 	}
 }
 

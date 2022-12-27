@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"github.com/earthly/earthly/ast/parser"
 	"github.com/earthly/earthly/ast/spec"
 	"github.com/pkg/errors"
@@ -27,6 +28,7 @@ type block struct {
 type listener struct {
 	*parser.BaseEarthParserListener
 
+	tokStream   *antlr.CommonTokenStream
 	ef          *spec.Earthfile
 	target      *spec.Target
 	userCommand *spec.UserCommand
@@ -43,7 +45,7 @@ type listener struct {
 	err error
 }
 
-func newListener(ctx context.Context, filePath string, enableSourceMap bool) *listener {
+func newListener(ctx context.Context, stream *antlr.CommonTokenStream, filePath string, enableSourceMap bool) *listener {
 	ef := &spec.Earthfile{}
 	if enableSourceMap {
 		ef.SourceLocation = &spec.SourceLocation{
@@ -51,6 +53,7 @@ func newListener(ctx context.Context, filePath string, enableSourceMap bool) *li
 		}
 	}
 	return &listener{
+		tokStream:       stream,
 		ctx:             ctx,
 		filePath:        filePath,
 		enableSourceMap: enableSourceMap,
@@ -83,6 +86,24 @@ func (l *listener) popBlock() spec.Block {
 	return ret
 }
 
+func (l *listener) docs(c antlr.ParserRuleContext, name string) string {
+	comments := l.tokStream.GetHiddenTokensToLeft(c.GetStart().GetTokenIndex(), parser.EarthLexerCOMMENTS_CHANNEL)
+	var docs string
+	for _, c := range comments {
+		line := strings.TrimSpace(strings.TrimPrefix(c.GetText(), "#"))
+		docs += line + "\n"
+	}
+	firstWordEnd := strings.IndexRune(docs, ' ')
+	if firstWordEnd == -1 {
+		return ""
+	}
+	firstWord := docs[:firstWordEnd]
+	if firstWord != name {
+		return ""
+	}
+	return docs
+}
+
 // Base -----------------------------------------------------------------------
 
 func (l *listener) EnterEarthFile(c *parser.EarthFileContext) {
@@ -110,7 +131,8 @@ func (l *listener) EnterTarget(c *parser.TargetContext) {
 }
 
 func (l *listener) EnterTargetHeader(c *parser.TargetHeaderContext) {
-	l.target.Name = strings.TrimSuffix(c.GetText(), ":")
+	l.target.Name = strings.TrimSuffix(c.Target().GetText(), ":")
+	l.target.Docs = l.docs(c, l.target.Name)
 }
 
 func (l *listener) ExitTarget(c *parser.TargetContext) {

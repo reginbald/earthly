@@ -5,6 +5,10 @@ tokens {
 	DEDENT
 }
 
+channels {
+         COMMENTS_CHANNEL
+}
+
 Target: [a-z] ([a-zA-Z0-9.] | '-')* ':' -> pushMode(RECIPE);
 UserCommand: [A-Z] ([A-Z0-9._])* ':' -> pushMode(RECIPE);
 
@@ -48,11 +52,13 @@ TRY: 'TRY' -> pushMode(BLOCK), pushMode(COMMAND_ARGS);
 FOR: 'FOR' -> pushMode(BLOCK), pushMode(COMMAND_ARGS);
 WAIT: 'WAIT' -> pushMode(BLOCK), pushMode(COMMAND_ARGS);
 
-NL: [ \t]* COMMENT? (EOF | CRLF);
+NL: [ \t]* (EOF | CRLF);
 WS: [ \t] ([ \t] | LC)*;
+COMMENT: [ \t]* '#' (~[\r\n])* CRLF? -> channel(COMMENTS_CHANNEL);
 fragment CRLF: ('\r' | '\n' | '\r\n');
-fragment COMMENT: '#' (~[\r\n])*;
-fragment NL_NOLC: [ \t]* COMMENT? CRLF;
+
+// TODO: figure out if adding COMMENT explicitly is necessary.
+fragment NL_NOLC: ([ \t]* CRLF | [ \t]* COMMENT);
 fragment LC: '\\' NL_NOLC+;
 
 // ----------------------------------------------------------------------------
@@ -104,6 +110,7 @@ WAIT_R: WAIT -> type(WAIT), pushMode(BLOCK), pushMode(COMMAND_ARGS);
 
 NL_R: NL -> type(NL);
 WS_R: WS -> type(WS);
+COMMENT_R: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
 
 // ----------------------------------------------------------------------------
 
@@ -152,6 +159,7 @@ END: 'END' -> popMode, pushMode(COMMAND_ARGS);
 
 NL_B: NL -> type(NL);
 WS_B: WS -> type(WS);
+COMMENT_B: COMMENT -> type(COMMENT);
 
 // ----------------------------------------------------------------------------
 
@@ -165,6 +173,7 @@ fragment EscapedAtomPart: ('\\' .) | (LC [ \t]*);
 
 NL_C: NL -> type(NL), popMode;
 WS_C: WS -> type(WS);
+COMMENT_C: COMMENT -> type(COMMENT);
 
 // ----------------------------------------------------------------------------
 
@@ -179,6 +188,7 @@ fragment RegularAtomPart_CAKV: ~([ \t\r\n"=\\]) | EscapedAtomPart;
 
 NL_CAKV: NL -> type(NL), popMode;
 WS_CAKV: WS -> type(WS);
+COMMENT_CAKV: COMMENT -> type(COMMENT);
 
 // ----------------------------------------------------------------------------
 
@@ -191,3 +201,4 @@ Atom_CAKVL: Atom_CAKV -> type(Atom);
 
 NL_CAKVL: NL_CAKV -> type(NL), popMode;
 WS_CAKVL: WS_CAKV -> type(WS);
+COMMENT_CAKVL: COMMENT -> type(COMMENT);

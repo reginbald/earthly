@@ -6,7 +6,7 @@ options {
 
 earthFile: NL* version? (stmts NL)? NL* targets? NL* EOF;
 
-targets: targetOrUserCommand (NL* targetOrUserCommand)*;
+targets: targetOrUserCommand ((NL|COMMENT)* targetOrUserCommand)*;
 targetOrUserCommand: target | userCommand;
 target: targetHeader NL+ WS? (INDENT stmts NL+ DEDENT)?;
 targetHeader: Target;

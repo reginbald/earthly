@@ -184,6 +184,14 @@ markdown-spellcheck:
     # TODO remove the greps once the corresponding markdown files have spelling fixed (or techterms added to .vale/styles/HouseStyle/tech-terms/...
     RUN find . -type f -iname '*.md' | xargs vale --config /etc/vale/vale.ini --output line --minAlertLevel error
 
+generate:
+    FROM +code
+    RUN go install git.sr.ht/~nelsam/hel/v4
+    RUN go generate ./...
+    FOR mockfile IN $(find . -name 'helheim_test.go')
+        SAVE ARTIFACT $mockfile AS LOCAL $mockfile
+    END
+
 unit-test:
     FROM +code
     COPY podman-setup.sh .
@@ -193,10 +201,17 @@ unit-test:
     # submodules must be specified explicitly or they will not be run, as
     # "./..." does not match submodules.
     ARG pkgname = ./... github.com/earthly/earthly/ast/... github.com/earthly/earthly/util/deltautil/...
+
+    ARG setuppodman = true
     WITH DOCKER
-        RUN ./podman-setup.sh && \
-            if [ -n "$testname" ]; then testarg="-run $testname"; fi && \
-            go test -timeout 20m $testarg $pkgname
+        IF [ "$setuppodman" = "true" ]
+            RUN ./podman-setup.sh && \
+                if [ -n "$testname" ]; then testarg="-run $testname"; fi && \
+                go test -timeout 20m $testarg $pkgname
+        ELSE
+            RUN if [ -n "$testname" ]; then testarg="-run $testname"; fi && \
+                go test -timeout 20m $testarg $pkgname
+        END
     END
 
 submodule-decouple-check:
