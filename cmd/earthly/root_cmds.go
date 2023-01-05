@@ -16,6 +16,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/earthly/earthly/ast/spec"
 	"github.com/earthly/earthly/buildcontext"
 	"github.com/earthly/earthly/buildkitd"
 	"github.com/earthly/earthly/config"
@@ -24,6 +25,7 @@ import (
 	"github.com/earthly/earthly/earthfile2llb"
 	"github.com/earthly/earthly/util/cliutil"
 	"github.com/earthly/earthly/util/fileutil"
+	"github.com/earthly/earthly/util/platutil"
 	"github.com/earthly/earthly/util/termutil"
 )
 
@@ -112,6 +114,12 @@ func (app *earthlyApp) rootCmds() []*cli.Command {
 			Aliases:     []string{"orgs"},
 			Usage:       "Earthly organization administration *experimental*",
 			Subcommands: app.orgCmds(),
+		},
+		{
+			Name:      "doc",
+			Usage:     "Document targets from an Earthfile *experimental*",
+			UsageText: "earthly [options] doc [<project-ref>[+<target-ref>]]",
+			Action:    app.actionDocumentTarget,
 		},
 		{
 			Name:      "ls",
@@ -593,6 +601,70 @@ func ifNilBoolDefault(ptr *bool, defaultValue bool) bool {
 	return *ptr
 }
 
+func (app *earthlyApp) actionDocumentTarget(cliCtx *cli.Context) error {
+	app.commandName = "docTarget"
+
+	if cliCtx.NArg() > 1 {
+		return errors.New("invalid number of arguments provided")
+	}
+
+	var tgtPath string
+	if cliCtx.NArg() > 0 {
+		tgtPath = cliCtx.Args().Get(0)
+		switch tgtPath[0] {
+		case '.', '/', '+':
+		default:
+			return errors.New("remote-paths are not currently supported - documentation targets must start with one of ['.', '/', '+']")
+		}
+	}
+
+	singleTgt := true
+	if !strings.ContainsRune(tgtPath, '+') {
+		tgtPath += "+base"
+		singleTgt = false
+	}
+
+	target, err := domain.ParseTarget(tgtPath)
+	if err != nil {
+		return errors.Errorf("unable to parse target [%v]", tgtPath)
+	}
+
+	gitLookup := buildcontext.NewGitLookup(app.console, app.sshAuthSock)
+	resolver := buildcontext.NewResolver(nil, gitLookup, app.console, "")
+	platr := platutil.NewResolver(platutil.GetUserPlatform())
+	var gwClient gwclient.Client
+	bc, err := resolver.Resolve(cliCtx.Context, gwClient, platr, target)
+	if err != nil {
+		return errors.Wrap(err, "failed to resolve target")
+	}
+
+	tgts := bc.Earthfile.Targets
+	if singleTgt {
+		tgt, err := findTarget(bc.Earthfile, target.Target)
+		if err != nil {
+			return errors.Wrap(err, "failed to look up target")
+		}
+		tgts = []spec.Target{tgt}
+	}
+
+	const docsIndent = "  "
+	currIndent := ""
+	if !singleTgt {
+		fmt.Println("TARGETS:")
+		currIndent = docsIndent
+	}
+	for _, tgt := range tgts {
+		fmt.Println(indent(currIndent, "+"+tgt.Name))
+		if tgt.Docs != "" {
+			indented := indent(currIndent+docsIndent, tgt.Docs)
+			fmt.Println(strings.Trim(indented, "\n"))
+		}
+	}
+	// TODO: print arg docs.
+
+	return nil
+}
+
 func (app *earthlyApp) actionListTargets(cliCtx *cli.Context) error {
 	app.commandName = "listTargets"
 
@@ -735,4 +807,24 @@ func (app *earthlyApp) actionPreviewPromoted(name, dest string) cli.ActionFunc {
 	return func(*cli.Context) error {
 		return errors.Errorf("the %q command has been moved out of \"preview\" is now available under %q", name, dest)
 	}
+}
+
+func findTarget(ef spec.Earthfile, name string) (spec.Target, error) {
+	for _, tgt := range ef.Targets {
+		if tgt.Name == name {
+			return tgt, nil
+		}
+	}
+	return spec.Target{}, errors.Errorf("could not find target named [%v]", name)
+}
+
+func indent(indent, s string) string {
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		if l == "" {
+			continue
+		}
+		lines[i] = indent + l
+	}
+	return strings.Join(lines, "\n")
 }
