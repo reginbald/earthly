@@ -43,6 +43,8 @@ foo:
     # RUN does not get documentation.
     RUN echo foo
 
+    ARG foo=bar # inline comments should also be ignored.
+
     # Lonely comment blocks in
     # targets should be ignored.
 

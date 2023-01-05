@@ -159,7 +159,7 @@ END: 'END' -> popMode, pushMode(COMMAND_ARGS);
 
 NL_B: NL -> type(NL);
 WS_B: WS -> type(WS);
-COMMENT_B: COMMENT -> type(COMMENT);
+COMMENT_B: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
 
 // ----------------------------------------------------------------------------
 
@@ -173,7 +173,7 @@ fragment EscapedAtomPart: ('\\' .) | (LC [ \t]*);
 
 NL_C: NL -> type(NL), popMode;
 WS_C: WS -> type(WS);
-COMMENT_C: COMMENT -> type(COMMENT);
+COMMENT_C: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
 
 // ----------------------------------------------------------------------------
 
@@ -188,7 +188,7 @@ fragment RegularAtomPart_CAKV: ~([ \t\r\n"=\\]) | EscapedAtomPart;
 
 NL_CAKV: NL -> type(NL), popMode;
 WS_CAKV: WS -> type(WS);
-COMMENT_CAKV: COMMENT -> type(COMMENT);
+COMMENT_CAKV: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
 
 // ----------------------------------------------------------------------------
 
@@ -201,4 +201,4 @@ Atom_CAKVL: Atom_CAKV -> type(Atom);
 
 NL_CAKVL: NL_CAKV -> type(NL), popMode;
 WS_CAKVL: WS_CAKV -> type(WS);
-COMMENT_CAKVL: COMMENT -> type(COMMENT);
+COMMENT_CAKVL: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
