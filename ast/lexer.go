@@ -144,19 +144,16 @@ func (l *lexer) processIndentation(peek antlr.Token) {
 	case parser.EarthLexerNL:
 		l.indentLevel = 0
 		l.afterNewLine = true
-	case parser.EarthLexerCOMMENT:
+	case parser.EarthLexerCOMMENT_BLOCK:
 		if l.afterNewLine {
-			// In cases where comments are on a line by themselves, they could
-			// be documentation - in which case we need handle INDENT/DEDENT.
+			// In cases where comment blocks are on a line by themselves, they
+			// could be documentation - in which case we need handle
+			// INDENT/DEDENT.
 			if strings.HasPrefix(peek.GetText(), " ") || strings.HasPrefix(peek.GetText(), "\t") {
 				l.indentLevel = 1
 			}
 			l.handleIndentLevel(peek)
 		}
-		// In all cases, comments consume a CRLF so we need to treat them like
-		// newlines.
-		l.indentLevel = 0
-		l.afterNewLine = true
 	default:
 		l.handleIndentLevel(peek)
 	}
@@ -194,18 +191,18 @@ func (l *lexer) handleIndentLevel(peek antlr.Token) {
 func (l *lexer) makeIndent() antlr.Token {
 	return l.GetTokenFactory().Create(
 		l.GetTokenSourceCharStreamPair(), parser.EarthLexerINDENT, "",
-		l.wsChannel, l.wsStart, l.wsStop, l.wsLine, l.wsColumn)
+		antlr.LexerDefaultTokenChannel, l.wsStart, l.wsStop, l.wsLine, l.wsColumn)
 }
 
 func (l *lexer) makeDedent() antlr.Token {
 	return l.GetTokenFactory().Create(
 		l.GetTokenSourceCharStreamPair(), parser.EarthLexerDEDENT, "",
-		l.wsChannel, l.wsStart, l.wsStop, l.wsLine, l.wsColumn)
+		antlr.LexerDefaultTokenChannel, l.wsStart, l.wsStop, l.wsLine, l.wsColumn)
 }
 
 func (l *lexer) makeNL(peek antlr.Token) antlr.Token {
 	return l.GetTokenFactory().Create(
 		l.GetTokenSourceCharStreamPair(), parser.EarthLexerNL, "",
-		peek.GetChannel(), peek.GetStart(), peek.GetStop(),
+		antlr.LexerDefaultTokenChannel, peek.GetStart(), peek.GetStop(),
 		peek.GetLine(), peek.GetColumn())
 }

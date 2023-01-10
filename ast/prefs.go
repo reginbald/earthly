@@ -14,7 +14,7 @@ type prefs struct {
 	enableSourceMap bool
 }
 
-// Opt is an option function for customizing the behavior of ParseVersion.
+// Opt is an option function for customizing the behavior of parsing functions.
 type Opt func(prefs) (prefs, error)
 
 // WithSourceMap tells ParseVersion to enable a source map when parsing.
@@ -25,11 +25,11 @@ func WithSourceMap() Opt {
 	}
 }
 
-// FromOpt is an option function for customizing the source reader of
-// ParseVersion.
+// FromOpt is an option function for customizing the source reader of parsing
+// functions.
 type FromOpt func(prefs) (prefs, error)
 
-// FromPath tells ParseVersion to open and read from a file at path.
+// FromPath tells parsing functions to open and read from a file at path.
 func FromPath(path string) FromOpt {
 	return func(p prefs) (prefs, error) {
 		f, err := os.Open(path)
@@ -50,7 +50,7 @@ type NamedReader interface {
 	Read(buff []byte) (n int, err error)
 }
 
-// FromReader tells ParseVersion to read from reader.
+// FromReader tells ParseVersion to read from r.
 func FromReader(r NamedReader) FromOpt {
 	return func(p prefs) (prefs, error) {
 		p.reader = r

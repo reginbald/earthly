@@ -6,7 +6,9 @@ tokens {
 }
 
 channels {
-         COMMENTS_CHANNEL
+         WHITESPACE_CHANNEL,
+         COMMENTS_CHANNEL,
+         DOCS_CHANNEL
 }
 
 Target: [a-z] ([a-zA-Z0-9.] | '-')* ':' -> pushMode(RECIPE);
@@ -53,12 +55,11 @@ FOR: 'FOR' -> pushMode(BLOCK), pushMode(COMMAND_ARGS);
 WAIT: 'WAIT' -> pushMode(BLOCK), pushMode(COMMAND_ARGS);
 
 NL: [ \t]* (EOF | CRLF);
-WS: [ \t] ([ \t] | LC)*;
-COMMENT: [ \t]* '#' (~[\r\n])* CRLF? -> channel(COMMENTS_CHANNEL);
+WS: [ \t] ([ \t] | LC)* -> channel(WHITESPACE_CHANNEL);
+COMMENT_BLOCK: [ \t]* '#' (~[\r\n])* (CRLF [ \t]* '#' (~[\r\n])*)* -> channel(DOCS_CHANNEL);
+//COMMENT: [ \t]* '#' (~[\r\n])* -> channel(COMMENTS_CHANNEL);
 fragment CRLF: ('\r' | '\n' | '\r\n');
-
-// TODO: figure out if adding COMMENT explicitly is necessary.
-fragment NL_NOLC: ([ \t]* CRLF | [ \t]* COMMENT);
+fragment NL_NOLC: [ \t]* ('#' (~[\r\n])*)? CRLF;
 fragment LC: '\\' NL_NOLC+;
 
 // ----------------------------------------------------------------------------
@@ -109,8 +110,9 @@ FOR_R: FOR -> type(FOR), pushMode(BLOCK), pushMode(COMMAND_ARGS);
 WAIT_R: WAIT -> type(WAIT), pushMode(BLOCK), pushMode(COMMAND_ARGS);
 
 NL_R: NL -> type(NL);
-WS_R: WS -> type(WS);
-COMMENT_R: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
+WS_R: WS -> type(WS), channel(WHITESPACE_CHANNEL);
+//COMMENT_R: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
+COMMENT_BLOCK_R: COMMENT_BLOCK -> type(COMMENT_BLOCK), channel(DOCS_CHANNEL);
 
 // ----------------------------------------------------------------------------
 
@@ -158,22 +160,25 @@ WAIT_B: WAIT -> type(WAIT), pushMode(BLOCK);
 END: 'END' -> popMode, pushMode(COMMAND_ARGS);
 
 NL_B: NL -> type(NL);
-WS_B: WS -> type(WS);
-COMMENT_B: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
+WS_B: WS -> type(WS), channel(WHITESPACE_CHANNEL);
+//COMMENT_B: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
+COMMENT_BLOCK_B: COMMENT_BLOCK -> type(COMMENT_BLOCK), channel(DOCS_CHANNEL);
 
 // ----------------------------------------------------------------------------
 
 mode COMMAND_ARGS;
 
-Atom: (RegularAtomPart | QuotedAtomPart)+;
+Atom: (RegularAtomPart | QuotedAtomPart | ShellAtomPart)+;
 fragment QuotedAtomPart: '"' (~('"' | '\\') | ('\\' .))* '"';
+fragment ShellAtomPart: '$(' (~(')' | '\\') | ('\\' .))* ')';
 
 fragment RegularAtomPart: ~([ \t\r\n\\"]) | EscapedAtomPart;
 fragment EscapedAtomPart: ('\\' .) | (LC [ \t]*);
 
 NL_C: NL -> type(NL), popMode;
-WS_C: WS -> type(WS);
-COMMENT_C: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
+WS_C: WS -> type(WS), channel(WHITESPACE_CHANNEL);
+//COMMENT_C: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
+COMMENT_BLOCK_C: COMMENT_BLOCK -> type(COMMENT_BLOCK), channel(DOCS_CHANNEL);
 
 // ----------------------------------------------------------------------------
 
@@ -183,12 +188,13 @@ mode COMMAND_ARGS_KEY_VALUE;
 EQUALS: '=' -> mode(COMMAND_ARGS);
 
 // Similar Atom, but don't allow '=' as part of it, unless it's in quotes.
-Atom_CAKV: (RegularAtomPart_CAKV | QuotedAtomPart)+ -> type(Atom);
+Atom_CAKV: (RegularAtomPart_CAKV | QuotedAtomPart | ShellAtomPart)+ -> type(Atom);
 fragment RegularAtomPart_CAKV: ~([ \t\r\n"=\\]) | EscapedAtomPart;
 
 NL_CAKV: NL -> type(NL), popMode;
-WS_CAKV: WS -> type(WS);
-COMMENT_CAKV: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
+WS_CAKV: WS -> type(WS), channel(WHITESPACE_CHANNEL);
+//COMMENT_CAKV: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
+COMMENT_BLOCK_CAKV: COMMENT_BLOCK -> type(COMMENT_BLOCK), channel(DOCS_CHANNEL);
 
 // ----------------------------------------------------------------------------
 
@@ -201,4 +207,5 @@ Atom_CAKVL: Atom_CAKV -> type(Atom);
 
 NL_CAKVL: NL_CAKV -> type(NL), popMode;
 WS_CAKVL: WS_CAKV -> type(WS);
-COMMENT_CAKVL: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
+//COMMENT_CAKVL: COMMENT -> type(COMMENT), channel(COMMENTS_CHANNEL);
+COMMENT_BLOCK_CAKVL: COMMENT_BLOCK -> type(COMMENT_BLOCK), channel(DOCS_CHANNEL);

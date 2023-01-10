@@ -1,0 +1,10 @@
+VERSION 0.6
+
+# foo is a target but this line is not documentation
+# because there is an empty line after it.
+
+# foo is a target
+# with documentation about how to use it.
+#
+# And a second line of documentation.
+foo:

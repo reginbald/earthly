@@ -32,14 +32,15 @@ func TestParse(t *testing.T) {
 # this is an early comment.
 
 # VERSION does not get documentation.
-VERSION 0.6
+VERSION 0.6 # Trailing comments do not cause parsing errors at the top level
+WORKDIR /tmp
 
 bar:
 
 # foo - Comments between targets should not be parsed as
 # documentation, even if they start with the target's name.
 
-foo:
+foo: # inline comments do not consume newlines.
     # RUN does not get documentation.
     RUN echo foo
 
@@ -48,8 +49,7 @@ foo:
     # Lonely comment blocks in
     # targets should be ignored.
 
-    # Even if they don't have a trailing newline.
-`))
+    # Even if they don't have a trailing newline.`))
 		f, err := ast.ParseOpts(context.Background(), ast.FromReader(tt.reader))
 		tt.expect(err).To(not(haveOccurred()))
 
@@ -69,7 +69,7 @@ VERSION 0.6
 `))
 		_, err := ast.ParseOpts(context.Background(), ast.FromReader(tt.reader))
 		tt.expect(err).To(haveOccurred())
-		tt.expect(err.Error()).To(containSubstring("no viable alternative at input '  '"))
+		tt.expect(err.Error()).To(containSubstring("no viable alternative at input"))
 	})
 
 	o.Spec("it parses a basic target", func(tt testCtx) {
@@ -112,7 +112,7 @@ foo:
 			tt.expect(f.Targets).To(haveLen(1))
 			tgt := f.Targets[0]
 			tt.expect(tgt.Name).To(equal("foo"))
-			tt.expect(tgt.Docs).To(equal("foo echoes 'foo'\n"))
+			tt.expect(tgt.Docs).To(equal("foo echoes 'foo'"))
 		})
 
 		o.Spec("it parses documentation on later targets", func(tt testCtx) {
@@ -133,7 +133,7 @@ foo:
 			tt.expect(f.Targets).To(haveLen(2))
 			tgt := f.Targets[1]
 			tt.expect(tgt.Name).To(equal("foo"))
-			tt.expect(tgt.Docs).To(equal("foo echoes 'foo'\n"))
+			tt.expect(tgt.Docs).To(equal("foo echoes 'foo'"))
 		})
 
 		o.Spec("it parses multiline documentation", func(tt testCtx) {
@@ -153,7 +153,7 @@ foo:
 			tt.expect(f.Targets).To(haveLen(1))
 			tgt := f.Targets[0]
 			tt.expect(tgt.Name).To(equal("foo"))
-			tt.expect(tgt.Docs).To(equal("foo echoes 'foo'\n\nand that's all.\n"))
+			tt.expect(tgt.Docs).To(equal("foo echoes 'foo'\n\nand that's all."))
 		})
 
 		o.Spec("it does not parse comments with empty lines after them as documentation", func(tt testCtx) {

@@ -1,0 +1,15 @@
+{
+  "baseRecipe": null,
+  "targets": [
+    {
+      "docs": "foo is a target\nwith documentation about how to use it.\n\nAnd a second line of documentation.\n",
+      "name": "foo",
+      "recipe": null
+    }
+  ],
+  "version": {
+    "args": [
+      "0.6"
+    ]
+  }
+}

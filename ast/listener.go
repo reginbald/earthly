@@ -87,11 +87,17 @@ func (l *listener) popBlock() spec.Block {
 }
 
 func (l *listener) docs(c antlr.ParserRuleContext, name string) string {
-	comments := l.tokStream.GetHiddenTokensToLeft(c.GetStart().GetTokenIndex(), parser.EarthLexerCOMMENTS_CHANNEL)
+	blocks := l.tokStream.GetHiddenTokensToLeft(c.GetStart().GetTokenIndex(), parser.EarthLexerDOCS_CHANNEL)
 	var docs string
-	for _, c := range comments {
-		line := strings.TrimSpace(strings.TrimPrefix(c.GetText(), "#"))
-		docs += line + "\n"
+	for _, b := range blocks {
+		lines := strings.Split(b.GetText(), "\n")
+		for i, l := range lines {
+			l = strings.TrimSpace(l)
+			l = strings.TrimPrefix(l, "#")
+			l = strings.TrimSpace(l)
+			lines[i] = l
+		}
+		docs += strings.Join(lines, "\n")
 	}
 	firstWordEnd := strings.IndexRune(docs, ' ')
 	if firstWordEnd == -1 {

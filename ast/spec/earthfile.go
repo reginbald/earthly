@@ -12,7 +12,7 @@ type Earthfile struct {
 // Target is the AST representation of an Earthfile target.
 type Target struct {
 	Name           string          `json:"name"`
-	Docs           string          `json:"docs"`
+	Docs           string          `json:"docs,omitempty"`
 	Recipe         Block           `json:"recipe"`
 	SourceLocation *SourceLocation `json:"sourceLocation,omitempty"`
 }
@@ -48,7 +48,7 @@ type Statement struct {
 // Command is the AST representation of an Earthfile command.
 type Command struct {
 	Name           string          `json:"name"`
-	Docs           string          `json:"docs"`
+	Docs           string          `json:"docs,omitempty"`
 	Args           []string        `json:"args"`
 	ExecMode       bool            `json:"execMode,omitempty"`
 	SourceLocation *SourceLocation `json:"sourceLocation,omitempty"`
